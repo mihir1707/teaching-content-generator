@@ -6,10 +6,10 @@ import app.config as cfg
 
 # Gemini SDK
 try:
-    import google.genai as genai
+    import google.generativeai as genai
 except Exception as e:
     raise ImportError(
-        "google-genai is required. Install it with:\n  pip install google-genai"
+        "google-generativeai is required. Install it with:\n  pip install google-generativeai"
     ) from e
 
 
@@ -131,14 +131,14 @@ def generate_plan(
 
     genai.configure(api_key=cfg.GOOGLE_API_KEY)
 
-    model = genai.GenerativeModel(model_name or getattr(cfg, "LLM_MODEL_NAME", "gemini-2.5-flash"))
+    model = genai.GenerativeModel(
+        model_name or getattr(cfg, "LLM_MODEL_NAME", "gemini-2.5-flash"),
+        system_instruction=_SYSTEM_PROMPT
+    )
 
     prompt = _build_prompt(level=level, style=style, topic=topic_str, language=language, description=description)
 
-    resp = model.generate_content([
-        {"role": "model", "parts": _SYSTEM_PROMPT},
-        {"role": "user", "parts": prompt}
-    ])
+    resp = model.generate_content(prompt)
 
     raw = (resp.text or "").strip()
     data = _json_sanitize(raw)
