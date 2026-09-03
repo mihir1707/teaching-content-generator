@@ -1,8 +1,8 @@
-# 🎓 Teaching Content Generator
+# 🎓 EduSlide AI
 
 > **AI-Powered Educational Content Creation from YouTube Videos, Web Articles, and Documents**
 
-An intelligent teaching assistant that transforms any learning resource into comprehensive educational materials including structured notes, summaries, MCQs, and professional PowerPoint presentations.
+An intelligent teaching assistant that transforms any learning resource into comprehensive educational materials including structured notes, summaries, MCQs, and professional PowerPoint presentations. Built with a modern React frontend and a Flask RAG backend powered by Google Gemini and Pinecone.
 
 ---
 
@@ -127,7 +127,7 @@ An intelligent teaching assistant that transforms any learning resource into com
 │              PLAN GENERATION (Google Gemini)                     │
 │  • User inputs topic name and description                        │
 │  • LLM generates content plan/outline                            │
-│  • Model: gemini-2.5-flash                                       │
+│  • Model: gemini-3.6-flash                                       │
 └──────────────────────────────┬──────────────────────────────────┘
                                │
                                ▼
@@ -170,7 +170,7 @@ An intelligent teaching assistant that transforms any learning resource into com
 │           QUERY GENERATION (Google Gemini)                       │
 │  • Generates 8 diverse retrieval queries from approved plan      │
 │  • Mix of conceptual, how-to, and comparison queries            │
-│  • Model: gemini-2.5-flash                                       │
+│  • Model: gemini-3.6-flash                                       │
 └──────────────────────────────┬──────────────────────────────────┘
                                │
                                ▼
@@ -191,7 +191,7 @@ An intelligent teaching assistant that transforms any learning resource into com
 │  • Executive Summary with main takeaways                         │
 │  • MCQs with explanations and difficulty distribution           │
 │  • Pedagogically enhanced with analogies & examples             │
-│  • Model: gemini-2.5-flash                                       │
+│  • Model: gemini-3.6-flash                                       │
 └──────────────────────────────┬──────────────────────────────────┘
                                │
                                ▼
@@ -221,7 +221,7 @@ An intelligent teaching assistant that transforms any learning resource into com
 - **Python 3.8+**: Primary programming language
 
 ### NLP & AI Models
-- **Google Gemini (gemini-2.5-flash)**: 
+- **Google Gemini (gemini-3.6-flash)**: 
   - Query generation from topic plans
   - Content generation (notes, summaries, MCQs)
   - Pedagogical enhancement with analogies
@@ -273,9 +273,10 @@ An intelligent teaching assistant that transforms any learning resource into com
 ## 📦 Installation
 
 ### Prerequisites
-- Python 3.8 or higher
+- Python 3.10 or higher
+- Node.js 18+ and npm
 - pip package manager
-- (Optional) Tesseract OCR for image processing
+- (Optional) Tesseract OCR for image/scanned PDF processing
 
 ### Step 1: Clone Repository
 ```bash
@@ -285,34 +286,70 @@ cd Teaching-content-generator
 
 ### Step 2: Create Virtual Environment
 ```bash
-# Windows
-python -m venv .venv
-.venv\Scripts\activate
-
 # macOS/Linux
 python3 -m venv .venv
 source .venv/bin/activate
+
+# Windows
+python -m venv .venv
+.venv\Scripts\activate
 ```
 
-### Step 3: Install Dependencies
+### Step 3: Install Backend Dependencies
+
+> ⚠️ **Important:** Do NOT run `pip install -r requirements.txt` directly.
+> The `docling` package pulls in PyTorch + CUDA (~1.1 GB) which may cause network timeouts.
+> Use the split install steps below instead.
+
+**Step 3a — Install core packages (fast, no GPU):**
 ```bash
-pip install -r requirements.txt
+pip install Flask>=3.0.0 flask-cors>=4.0.0 python-dotenv>=1.0.0 requests \
+  youtube-transcript-api langdetect tiktoken langchain-text-splitters \
+  langchain-core langchain-community langchain-google-genai google-genai \
+  google-generativeai deep-translator numpy pinecone gunicorn>=21.2.0 \
+  beautifulsoup4 lxml python-pptx Pillow defusedxml typing-extensions \
+  PyPDF2 python-docx pytesseract scikit-learn scipy
 ```
 
-### Step 4: Install Tesseract (Optional, for OCR)
-**Windows:**
-- Download from: https://github.com/UB-Mannheim/tesseract/wiki
-- Add to PATH
+**Step 3b — Install PyTorch (CPU-only, ~200 MB):**
+```bash
+pip install torch --index-url https://download.pytorch.org/whl/cpu
+```
+
+**Step 3c — Install sentence-transformers:**
+```bash
+pip install sentence-transformers --no-deps
+pip install transformers huggingface-hub tokenizers
+```
+
+**Step 3d — (Optional) Install Docling for advanced document extraction:**
+```bash
+# Only if you have a stable, fast internet connection (downloads ~1.1 GB)
+pip install docling
+```
+If docling is not installed, the app automatically falls back to PyPDF2 + python-docx.
+
+### Step 4: Install Frontend Dependencies
+```bash
+cd frontend
+npm install
+cd ..
+```
+
+### Step 5: Install Tesseract (Optional, for OCR)
+**Linux:**
+```bash
+sudo apt-get install tesseract-ocr
+```
 
 **macOS:**
 ```bash
 brew install tesseract
 ```
 
-**Linux:**
-```bash
-sudo apt-get install tesseract-ocr
-```
+**Windows:**
+- Download from: https://github.com/UB-Mannheim/tesseract/wiki
+- Add to PATH
 
 ---
 
@@ -338,9 +375,10 @@ YOUTUBE_API_KEY=optional_youtube_data_api_key
 ### Getting API Keys
 
 **Google Gemini API:**
-1. Visit: https://makersuite.google.com/app/apikey
-2. Create a new API key
-3. Copy to `.env`
+1. Visit: https://aistudio.google.com/app/apikey
+2. Sign in with your Google account
+3. Click **"Create API Key"**
+4. Copy the key to `.env`
 
 **Pinecone API:**
 1. Visit: https://www.pinecone.io/
@@ -354,7 +392,7 @@ Edit `app/config.py` to customize:
 
 ```python
 # Models
-LLM_MODEL_NAME = "gemini-2.5-flash"  # Gemini model
+LLM_MODEL_NAME = "models/gemini-3.6-flash"  # Gemini model (updated — gemini-2.5-flash is deprecated)
 EMBEDDING_MODEL_NAME = "all-MiniLM-L6-v2"  # Embedding model
 
 # Chunking
@@ -378,17 +416,35 @@ PINECONE_METRIC = "cosine"
 
 ## 🚀 Usage
 
-### Start the Server
+### Start the Backend Server
 
 ```bash
-# Windows
-python -m flask --app app.server run
+# Make sure virtual environment is active
+source .venv/bin/activate  # Linux/macOS
+# .venv\Scripts\activate   # Windows
 
-# macOS/Linux
-python3 -m flask --app app.server run
+# Run Flask
+python3 -m flask --app app.server run --host=0.0.0.0 --port=5000
 ```
 
-Server runs on: `http://127.0.0.1:5000`
+Backend runs on: `http://127.0.0.1:5000`
+
+### Start the Frontend (React UI)
+
+```bash
+cd frontend
+npm run dev
+```
+
+Frontend runs on: `http://localhost:8080` (or `http://localhost:5173`)
+
+> 💡 Run the **backend and frontend in separate terminals** simultaneously.
+
+### Health Check
+```bash
+curl http://localhost:5000/health
+# Response: {"status": "healthy", "message": "Backend is running"}
+```
 
 ### Quick Examples
 
@@ -591,14 +647,21 @@ Teaching-content-generator/
 │   ├── file_upload_outputs/
 │   └── outputs/
 │
-├── frontend/                     # React frontend (optional)
-│   └── src/
+├── frontend/                     # React + Vite + TypeScript frontend
+│   ├── src/
+│   │   ├── components/           # Layout, Navbar, UI components
+│   │   ├── pages/                # Landing, SelectOption, generate pages
+│   │   │   └── generate/         # YouTube, Article, Document, Combined, TopicOnly
+│   │   ├── services/             # API service calls
+│   │   └── index.css             # Global design system
+│   ├── package.json
+│   └── vite.config.ts
 │
-├── .env                          # Environment variables (create this)
+├── .env                          # Environment variables (create this — see Configuration)
 ├── .gitignore
 ├── README.md
-├── requirements.txt              # Python dependencies
-└── installed.txt                 # Dependency verification
+├── requirements.txt              # Python dependencies (see Installation notes)
+└── installed.txt                 # Verified installed package list
 ```
 
 ---
@@ -637,13 +700,30 @@ This project is licensed under the MIT License.
 
 ---
 
+## 🐛 Known Issues & Fixes
+
+### `generate_plan.py` — Gemini API call fix
+The original code used an invalid conversation structure (`role: "model"` as the first message).
+This was fixed by moving the system prompt into `system_instruction` in `GenerativeModel`.
+
+### Gemini model deprecation
+`gemini-2.5-flash` is no longer available for new users.
+Updated to `models/gemini-3.6-flash` in `app/config.py`.
+
+### Docling installation timeout
+`docling` pulls in PyTorch + CUDA (~1.1 GB) which can cause network timeouts during pip install.
+Install it separately and optionally — the app works without it using PyPDF2 fallback.
+
+---
+
 ## 🙏 Acknowledgments
 
-- **Google Gemini** for powerful LLM capabilities
+- **Google Gemini (gemini-3.6-flash)** for powerful LLM capabilities
 - **Pinecone** for efficient vector search
 - **SentenceTransformers** for free local embeddings
 - **LangChain** for excellent text processing tools
-- **Docling** for advanced document extraction
+- **React + Vite + TailwindCSS** for the modern frontend UI
+- **Docling** for advanced document extraction (optional)
 
 **Made with ❤️ for educators and learners everywhere**
 
