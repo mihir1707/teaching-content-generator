@@ -71,90 +71,90 @@ An intelligent teaching assistant that transforms any learning resource into com
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                    INPUT SOURCES                                 │
+│                    INPUT SOURCES                                │
 ├──────────────┬─────────────────┬────────────────────────────────┤
 │  YouTube     │   Web Article   │   File Upload                  │
 │  Video URL   │   URL           │   (PDF, DOCX, Images)          │
 └──────┬───────┴────────┬────────┴──────────┬─────────────────────┘
-       │                 │                    │
-       ▼                 ▼                    ▼
+       │                │                   │
+       ▼                ▼                   ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│                 TEXT EXTRACTION LAYER                            │
+│                 TEXT EXTRACTION LAYER                           │
 ├──────────────┬─────────────────┬────────────────────────────────┤
 │ youtube-     │  LangChain      │  Docling / PyPDF2 /            │
 │ transcript-  │  WebBaseLoader  │  python-docx / pytesseract     │
-│ api          │                 │                                 │
+│ api          │                 │                                │
 └──────┬───────┴────────┬────────┴──────────┬─────────────────────┘
-       │                 │                    │
-       └─────────────────┴────────────────────┘
-                         │
-                         ▼
-┌─────────────────────────────────────────────────────────────────┐
+       │                │                   │
+       └────────────────┴───────────────────┘
+                        │
+                        ▼
+┌──────────────────────────────────────────────────────────────────┐
 │                    TEXT PREPROCESSING                            │
 │  • Normalization  • Language Detection  • Translation (if needed)│
-└──────────────────────────────┬──────────────────────────────────┘
+└──────────────────────────────┬───────────────────────────────────┘
                                │
                                ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│                 CHUNKING (LangChain)                             │
-│  • RecursiveCharacterTextSplitter                                │
-│  • Token-aware chunking (tiktoken)                               │
+│                 CHUNKING (LangChain)                            │
+│  • RecursiveCharacterTextSplitter                               │
+│  • Token-aware chunking (tiktoken)                              │
 │  • Size: 800 tokens, Overlap: 160 tokens                        │
-│  • Deterministic chunk IDs (SHA-1 hash)                          │
+│  • Deterministic chunk IDs (SHA-1 hash)                         │
 └──────────────────────────────┬──────────────────────────────────┘
                                │
                                ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│              EMBEDDING (SentenceTransformers)                    │
-│  • Model: all-MiniLM-L6-v2                                       │
-│  • Dimension: 384                                                │
+│              EMBEDDING (SentenceTransformers)                   │
+│  • Model: all-MiniLM-L6-v2                                      │
+│  • Dimension: 384                                               │
 │  • Local & Free (no API costs)                                  │
-│  • Batch processing for efficiency                               │
+│  • Batch processing for efficiency                              │
 └──────────────────────────────┬──────────────────────────────────┘
                                │
                                ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│            VECTOR DATABASE (Pinecone)                            │
-│  • Serverless index with cosine similarity                       │
-│  • Namespace isolation per source                                │
-│    - video:<video_id>                                            │
-│    - article:<domain>:<hash>                                     │
-│    - file:<hash>:<timestamp>                                     │
+│            VECTOR DATABASE (Pinecone)                           │
+│  • Serverless index with cosine similarity                      │
+│  • Namespace isolation per source                               │
+│    - video:<video_id>                                           │
+│    - article:<domain>:<hash>                                    │
+│    - file:<hash>:<timestamp>                                    │
 └──────────────────────────────┬──────────────────────────────────┘
                                │
                                ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│              PLAN GENERATION (Google Gemini)                     │
-│  • User inputs topic name and description                        │
-│  • LLM generates content plan/outline                            │
-│  • Model: gemini-3.6-flash                                       │
+│              PLAN GENERATION (Google Gemini)                    │
+│  • User inputs topic name and description                       │
+│  • LLM generates content plan/outline                           │
+│  • Model: gemini-3.6-flash                                      │
 └──────────────────────────────┬──────────────────────────────────┘
                                │
                                ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                   USER APPROVAL GATE                             │
+┌───────────────────────────────────────────────────────────────────┐
+│                   USER APPROVAL GATE                              │
 │                                                                   │
-│    ┌─────────────┐              ┌─────────────┐                │
-│    │   Display   │              │   User      │                │
-│    │   Plan to   │─────────────▶│   Reviews   │                │
-│    │   User      │              │   & Decides │                │
-│    └─────────────┘              └──────┬──────┘                │
-│                                         │                         │
-│                        ┌────────────────┴──────────────┐         │
+│    ┌─────────────┐              ┌─────────────┐                   │
+│    │   Display   │              │   User      │                   │
+│    │   Plan to   │─────────────▶│   Reviews   │                   │
+│    │   User      │              │   & Decides │                   │
+│    └─────────────┘              └──────┬──────┘                   │
+│                                        │                          │
+│                        ┌───────────────┴────────────────┐         │
 │                        │                                │         │
-│                  Not Approved                      Approved      │
+│                  Not Approved                       Approved      │
 │                        │                                │         │
 │                        ▼                                ▼         │
-│              ┌──────────────────┐           ┌──────────────────┐│
-│              │  User Inputs     │           │  Proceed to      ││
-│              │  Changes/        │───┐       │  Query           ││
-│              │  Modifications   │   │       │  Generation      ││
-│              └──────────────────┘   │       └────────┬─────────┘│
-│                                      │                │          │
-│                                      │                │          │
-└──────────────────────────────────────┼────────────────┼──────────┘
-                                       │                │
-                                       └────────┐       │
+│              ┌──────────────────┐           ┌──────────────────┐  |
+│              │  User Inputs     │           │  Proceed to      │  |
+│              │  Changes/        │───┐       │  Query           │  |
+│              │  Modifications   │   │       │  Generation      │  |
+│              └──────────────────┘   │       └─────────┬────────┘  │
+│                                     │                 │           │
+│                                     │                 │           │
+└─────────────────────────────────────┼─────────────────┼───────────┘
+                                      │                 │
+                                      └─────────┐       │
                                                 │       │
                                                 ▼       │
                                         ┌─────────────┐ │
@@ -167,42 +167,42 @@ An intelligent teaching assistant that transforms any learning resource into com
                                                         │
                                                         ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│           QUERY GENERATION (Google Gemini)                       │
-│  • Generates 8 diverse retrieval queries from approved plan      │
+│           QUERY GENERATION (Google Gemini)                      │
+│  • Generates 8 diverse retrieval queries from approved plan     │
 │  • Mix of conceptual, how-to, and comparison queries            │
-│  • Model: gemini-3.6-flash                                       │
+│  • Model: gemini-3.6-flash                                      │
 └──────────────────────────────┬──────────────────────────────────┘
                                │
                                ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│         RAG RETRIEVAL (Dense + Fusion)                           │
+│         RAG RETRIEVAL (Dense + Fusion)                          │
 │  • Multi-query retrieval (5 chunks per query)                   │
 │  • Reciprocal Rank Fusion (RRF) for result merging              │
-│  • Final top-K selection based on style                          │
-│    - Concise: 3 chunks                                           │
-│    - Detailed: 8 chunks                                          │
-│    - Exam-prep: 5 chunks                                         │
+│  • Final top-K selection based on style                         │
+│    - Concise: 3 chunks                                          │
+│    - Detailed: 8 chunks                                         │
+│    - Exam-prep: 5 chunks                                        │
 └──────────────────────────────┬──────────────────────────────────┘
                                │
                                ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│         CONTENT GENERATION (Google Gemini)                       │
+│         CONTENT GENERATION (Google Gemini)                      │
 │  • Structured Notes with sections, key points, glossary         │
-│  • Executive Summary with main takeaways                         │
+│  • Executive Summary with main takeaways                        │
 │  • MCQs with explanations and difficulty distribution           │
 │  • Pedagogically enhanced with analogies & examples             │
-│  • Model: gemini-3.6-flash                                       │
+│  • Model: gemini-3.6-flash                                      │
 └──────────────────────────────┬──────────────────────────────────┘
                                │
                                ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│         PRESENTATION BUILDER (python-pptx)                       │
+│         PRESENTATION BUILDER (python-pptx)                      │
 │  • Title slide with topic & level                               │
-│  • Summary & Key Points slides                                   │
-│  • Section slides (one per topic section)                        │
-│  • Glossary slide                                                │
-│  • MCQ slides with separate answer slides                        │
-│  • Professional formatting & color schemes                       │
+│  • Summary & Key Points slides                                  │
+│  • Section slides (one per topic section)                       │
+│  • Glossary slide                                               │
+│  • MCQ slides with separate answer slides                       │
+│  • Professional formatting & color schemes                      │
 └──────────────────────────────┬──────────────────────────────────┘
                                │
                                ▼
